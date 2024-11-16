@@ -1,236 +1,92 @@
+<?php
+// Koneksi ke database
+$conn = new mysqli('localhost', 'root', '', 'database_antrian');
+
+// Cek koneksi
+if ($conn->connect_error) {
+    die("Koneksi gagal: " . $conn->connect_error);
+}
+
+// Loket yang ingin ditampilkan
+$loket = 1;
+
+// Nomor antrian saat ini (status 'sedang')
+$current_result = $conn->query("
+    SELECT nomor_antrian 
+    FROM antrian 
+    WHERE tanggal = CURDATE() AND loket = $loket AND status = 'sedang' 
+    LIMIT 1
+");
+$current_antrian = $current_result->num_rows > 0 ? $current_result->fetch_assoc()['nomor_antrian'] : '-';
+
+// Nomor antrian berikutnya (status 'belum')
+$next_result = $conn->query("
+    SELECT nomor_antrian 
+    FROM antrian 
+    WHERE tanggal = CURDATE() AND loket = $loket AND status = 'belum' 
+    ORDER BY nomor_antrian ASC 
+    LIMIT 1
+");
+$next_antrian = $next_result->num_rows > 0 ? $next_result->fetch_assoc()['nomor_antrian'] : '-';
+
+// Total antrian yang belum dipanggil
+$total_result = $conn->query("
+    SELECT COUNT(*) AS total 
+    FROM antrian 
+    WHERE tanggal = CURDATE() AND loket = $loket AND status = 'belum'
+");
+$total_antrian = $total_result->fetch_assoc()['total'];
+
+// Tutup koneksi
+$conn->close();
+?>
+
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Antrian Pendaftaran</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #0066CC;
-            color: white;
-            text-align: center;
-        }
-
-        .container {
-            margin-top: 50px;
-        }
-
-        .loket {
-            display: inline-block;
-            margin: 20px;
-            padding: 20px;
-            background-color: #007BFF;
-            border-radius: 10px;
-        }
-
-        button {
-            padding: 10px 20px;
-            background-color: #28a745;
-            border: none;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-            margin: 5px;
-        }
-
-        button:hover {
-            background-color: #218838;
-        }
-
-        input[type="number"] {
-            padding: 5px;
-            font-size: 16px;
-            width: 80px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            text-align: center;
-        }
-    </style>
+    <title>Monitor Antrian</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-<script>
-    let queues = {};
-    let lastCalled = {}; // Menyimpan nomor terakhir yang dipanggil untuk setiap loket
+    <div class="container-fluid p-3 bg-success text-white">
+        <h3>Monitor Antrian Pendaftaran</h3>
+        <p>Loket <?= $loket ?> | Tanggal: <?= date('d M Y') ?></p>
+    </div>
 
-    // Perbarui nomor antrian dari database
-    function loadLastQueue(loket) {
-        fetch(`get_last_antrian.php?loket=${loket}`)
-            .then(response => response.json())
-            .then(data => {
-                const lastQueue = data.last_antrian + 1; // Nomor antrian berikutnya
-                queues[loket] = lastQueue;
-                lastCalled[loket] = 0; // Awalnya belum ada yang dipanggil
-                document.getElementById(`noAntrianLoket${loket}`).innerText = lastQueue;
-            })
-            .catch(error => {
-                console.error("Error:", error);
-            });
-    }
-
-    // Periksa semua loket saat halaman dimuat
-    window.onload = function () {
-        for (let loket = 1; loket <= 3; loket++) {
-            loadLastQueue(loket);
-        }
-    };
-
-    // Fungsi untuk memanggil nomor berikutnya
-    function nextQueue(loket) {
-        const currentQueue = queues[loket];
-        playVoice(`loket ${loket} ${currentQueue}`);
-        document.getElementById(`noAntrianLoket${loket}`).innerText = currentQueue;
-
-        // Simpan nomor yang dipanggil terakhir
-        lastCalled[loket] = currentQueue;
-
-        // Simpan ke database
-        saveToDatabase(loket, currentQueue);
-
-        // Naikkan nomor antrian untuk panggilan berikutnya
-        queues[loket]++;
-    }
-
-    // Fungsi untuk menyimpan ke database
-    function saveToDatabase(loket, antrian) {
-        fetch('simpan_antrian.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ loket, antrian })
-        }).then(response => {
-            if (response.ok) {
-                console.log("Nomor antrian disimpan.");
-            } else {
-                console.error("Gagal menyimpan nomor antrian.");
-            }
-        }).catch(error => {
-            console.error("Error:", error);
-        });
-    }
-
-    // Fungsi untuk memutar ulang nomor antrian terakhir
-    function repeatQueue(loket) {
-        const lastQueue = lastCalled[loket];
-        if (lastQueue && lastQueue > 0) {
-            playVoice(`loket ${loket} ${lastQueue}`);
-        } else {
-            alert("Belum ada nomor yang dipanggil untuk loket ini.");
-        }
-    }
-
-    // Fungsi untuk memasukkan nomor manual
-    function manualQueue(loket) {
-        const manualInput = parseInt(prompt("Masukkan nomor antrian:"), 10);
-        if (!isNaN(manualInput) && manualInput >= 1 && manualInput <= 999) {
-            queues[loket] = manualInput; // Update nomor antrian
-            playVoice(`loket ${loket} ${manualInput}`);
-            document.getElementById(`noAntrianLoket${loket}`).innerText = manualInput;
-
-            // Simpan nomor manual sebagai nomor terakhir yang dipanggil
-            lastCalled[loket] = manualInput;
-
-            saveToDatabase(loket, manualInput); // Simpan ke database
-        } else {
-            alert("Nomor tidak valid. Harus antara 1 hingga 999.");
-        }
-    }
-
-    // Fungsi untuk memutar suara (tetap sama)
-    function playVoice(input) {
-        const parts = input.split(' ');
-        const loket = parts[1];
-        const antrian = parseInt(parts[2], 10);
-
-        const audioFiles = [];
-        audioFiles.push("antrian");
-        audioFiles.push(...getWavFileNames(antrian));
-        audioFiles.push("counter");
-        audioFiles.push(loket);
-
-        let index = 0;
-        function playNext() {
-            if (index < audioFiles.length) {
-                const audio = new Audio(`suara/${audioFiles[index]}.wav`);
-                audio.play();
-                audio.onended = playNext;
-                index++;
-            }
-        }
-        playNext();
-    }
-
-    // Fungsi untuk menghasilkan nama file audio sesuai nomor
-    function getWavFileNames(antrian) {
-        const numberWords = {
-            "1": "satu", "2": "dua", "3": "tiga", "4": "empat", "5": "lima",
-            "6": "enam", "7": "tujuh", "8": "delapan", "9": "sembilan",
-            "10": "sepuluh", "11": "sebelas", "20": "dua puluh",
-            "100": "seratus", "0": "nol"
-        };
-
-        const result = [];
-
-        if (antrian >= 100) {
-            const hundreds = Math.floor(antrian / 100);
-            if (hundreds === 1) {
-                result.push("seratus");
-            } else {
-                result.push(numberWords[hundreds]);
-                result.push("ratus");
-            }
-            const remainder = antrian % 100;
-            if (remainder > 0) {
-                result.push(...getWavFileNames(remainder));
-            }
-        } else if (antrian >= 20) {
-            const tens = Math.floor(antrian / 10);
-            result.push(numberWords[tens]);
-            result.push("puluh");
-            const ones = antrian % 10;
-            if (ones > 0) {
-                result.push(numberWords[ones]);
-            }
-        } else {
-            result.push(numberWords[antrian]);
-        }
-
-        return result;
-    }
-</script>
-
-
-    <div class="container">
-        <h1>Sistem Antrian Pendaftaran</h1>
-
-        <!-- Loket 1 -->
-        <div class="loket" id="loket1">
-            <h2>Loket 1</h2>
-            <p id="noAntrianLoket1">1</p>
-            <button onclick="nextQueue(1)">Next</button>
-            <button onclick="repeatQueue(1)">Ulangi</button>
-            <button onclick="manualQueue(1)">Input Manual</button>
-        </div>
-
-        <!-- Loket 2 -->
-        <div class="loket" id="loket2">
-            <h2>Loket 2</h2>
-            <p id="noAntrianLoket2">1</p>
-            <button onclick="nextQueue(2)">Next</button>
-            <button onclick="repeatQueue(2)">Ulangi</button>
-            <button onclick="manualQueue(2)">Input Manual</button>
-        </div>
-
-        <!-- Loket 3 -->
-        <div class="loket" id="loket3">
-            <h2>Loket 3</h2>
-            <p id="noAntrianLoket3">1</p>
-            <button onclick="nextQueue(3)">Next</button>
-            <button onclick="repeatQueue(3)">Ulangi</button>
-            <button onclick="manualQueue(3)">Input Manual</button>
+    <div class="container mt-3">
+        <div class="row">
+            <!-- Video -->
+            <div class="col-md-8">
+                <iframe width="100%" height="400" src="https://www.youtube.com/embed/dummy-video-id" frameborder="0" allowfullscreen></iframe>
+            </div>
+            <!-- Antrian -->
+            <div class="col-md-4">
+                <div class="card mb-3 text-center">
+                    <div class="card-header bg-info text-white">NOMOR ANTRIAN SEKARANG</div>
+                    <div class="card-body">
+                        <h1 class="display-3"><?= $current_antrian ?></h1>
+                    </div>
+                </div>
+                <div class="card mb-3 text-center">
+                    <div class="card-header bg-warning text-white">ANTRIAN SELANJUTNYA</div>
+                    <div class="card-body">
+                        <h1 class="display-4"><?= $next_antrian ?></h1>
+                    </div>
+                </div>
+                <div class="card text-center">
+                    <div class="card-header bg-primary text-white">TOTAL ANTRIAN</div>
+                    <div class="card-body">
+                        <h1 class="display-5"><?= $total_antrian ?></h1>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <footer class="container-fluid text-center mt-5 p-3 bg-success text-white">
+        <p>Selamat datang di sistem antrian loket <?= $loket ?></p>
+    </footer>
 </body>
 </html>

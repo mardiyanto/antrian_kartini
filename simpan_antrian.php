@@ -17,20 +17,38 @@ $nomorAntrian = intval($data['antrian']);
 $tanggal = date('Y-m-d');
 
 // Periksa apakah antrian sudah ada di database
-$sql = "SELECT * FROM antrian WHERE tanggal = '$tanggal' AND loket = $loket AND nomor_antrian = $nomorAntrian";
-$result = $conn->query($sql);
+$sql = "SELECT id FROM antrian WHERE tanggal = ? AND loket = ? AND nomor_antrian = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("sii", $tanggal, $loket, $nomorAntrian);
+$stmt->execute();
+$result = $stmt->get_result();
 
 if ($result->num_rows == 0) {
     // Simpan data baru
-    $insertSql = "INSERT INTO antrian (tanggal, loket, nomor_antrian, status) VALUES ('$tanggal', $loket, $nomorAntrian, 'sudah')";
-    if ($conn->query($insertSql) === TRUE) {
-        echo json_encode(['message' => 'Nomor antrian disimpan.']);
+    $insertSql = "INSERT INTO antrian (tanggal, loket, nomor_antrian, status) VALUES (?, ?, ?, 'dipanggil')";
+    $insertStmt = $conn->prepare($insertSql);
+    $insertStmt->bind_param("sii", $tanggal, $loket, $nomorAntrian);
+
+    if ($insertStmt->execute()) {
+        echo json_encode(['status' => 'success', 'message' => 'Nomor antrian disimpan.']);
     } else {
-        echo json_encode(['message' => 'Gagal menyimpan nomor antrian.']);
+        echo json_encode(['status' => 'error', 'message' => 'Gagal menyimpan nomor antrian.']);
     }
+    $insertStmt->close();
 } else {
-    echo json_encode(['message' => 'Nomor antrian sudah ada di database.']);
+    // Update status jika nomor sudah ada
+    $updateSql = "UPDATE antrian SET status = 'dipanggil' WHERE tanggal = ? AND loket = ? AND nomor_antrian = ?";
+    $updateStmt = $conn->prepare($updateSql);
+    $updateStmt->bind_param("sii", $tanggal, $loket, $nomorAntrian);
+
+    if ($updateStmt->execute()) {
+        echo json_encode(['status' => 'success', 'message' => 'Nomor antrian diperbarui.']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Gagal memperbarui nomor antrian.']);
+    }
+    $updateStmt->close();
 }
 
+$stmt->close();
 $conn->close();
 ?>

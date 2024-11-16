@@ -222,6 +222,39 @@
     return result;
 }
 </script>
+<script>
+        // Fungsi untuk mendapatkan data antrian terbaru
+        function fetchAntrianDipanggil() {
+            fetch('get_antrian_dipanggil.php')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('antrian-container');
+                    container.innerHTML = ''; // Kosongkan kontainer
+
+                    if (data.length > 0) {
+                        data.forEach(item => {
+                            const loketDiv = document.createElement('div');
+                            loketDiv.classList.add('loket');
+                            loketDiv.innerHTML = `
+                                <h2>Loket ${item.loket}</h2>
+                                <p>Nomor Antrian: <strong>${item.nomor_antrian}</strong></p>
+                                <p>Waktu Panggilan: <strong>${item.waktu_panggilan}</strong></p>
+                            `;
+                            container.appendChild(loketDiv);
+                        });
+                    } else {
+                        container.innerHTML = '<p>Belum ada nomor antrian yang dipanggil.</p>';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Panggil fungsi setiap 5 detik untuk memperbarui data
+        setInterval(fetchAntrianDipanggil, 5000);
+
+        // Panggilan pertama saat halaman dimuat
+        fetchAntrianDipanggil();
+    </script>
     <div class="container">
         <h1>Sistem Antrian Pendaftaran</h1>
 
@@ -231,7 +264,7 @@
             <p id="noAntrianLoket1">1</p>
             <button onclick="nextQueue(1)">Next</button>
             <button onclick="repeatQueue(1)">Ulangi</button>
-            <button onclick="manualQueue(1)">Input Manual</button>
+            <!-- <button onclick="manualQueue(1)">Input Manual</button> -->
         </div>
 
         <!-- Loket 2 -->
@@ -240,7 +273,7 @@
             <p id="noAntrianLoket2">1</p>
             <button onclick="nextQueue(2)">Next</button>
             <button onclick="repeatQueue(2)">Ulangi</button>
-            <button onclick="manualQueue(2)">Input Manual</button>
+            <!-- <button onclick="manualQueue(2)">Input Manual</button> -->
         </div>
 
         <!-- Loket 3 -->
@@ -249,8 +282,9 @@
             <p id="noAntrianLoket3">1</p>
             <button onclick="nextQueue(3)">Next</button>
             <button onclick="repeatQueue(3)">Ulangi</button>
-            <button onclick="manualQueue(3)">Input Manual</button>
+            <!-- <button onclick="manualQueue(3)">Input Manual</button> -->
         </div>
     </div>
+    <div id="antrian-container"></div>
 </body>
 </html>

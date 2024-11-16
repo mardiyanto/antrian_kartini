@@ -14,8 +14,12 @@ if ($conn->connect_error) {
 $sql = "
     SELECT loket, nomor_antrian, waktu_panggilan 
     FROM antrian 
-    WHERE status = 'dipanggil'
-    GROUP BY loket
+    WHERE waktu_panggilan IN (
+        SELECT MAX(waktu_panggilan) 
+        FROM antrian 
+        WHERE status = 'dipanggil' 
+        GROUP BY loket
+    )
     ORDER BY loket ASC
 ";
 
@@ -34,3 +38,4 @@ echo json_encode($data);
 
 $conn->close();
 ?>
+

@@ -103,7 +103,7 @@
                 document.getElementById(`noAntrianLoket${loket}`).innerText = queues[loket];
                 
                 // Simpan nomor yang diperbarui ke database
-                saveToDatabase(loket, queues[loket] - 1); 
+               
             }
         }
     }

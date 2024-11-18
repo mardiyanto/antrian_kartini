@@ -10,6 +10,11 @@ if ($conn->connect_error) {
     die("Koneksi gagal: " . $conn->connect_error);
 }
 
+// Hapus data lama yang bukan untuk hari ini
+$tanggalHariIni = date('Y-m-d');
+$sqlReset = "DELETE FROM antrian WHERE tanggal < '$tanggalHariIni'";
+$conn->query($sqlReset);
+
 // Ambil data nomor terakhir yang sedang dipanggil untuk setiap loket
 $sql = "
     SELECT loket, nomor_antrian, waktu_panggilan 
@@ -38,4 +43,3 @@ echo json_encode($data);
 
 $conn->close();
 ?>
-

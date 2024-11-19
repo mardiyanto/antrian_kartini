@@ -10,7 +10,7 @@
 <body>
     <div class="container-fluid p-3 bg-success text-white">
         <h3>Monitor Antrian Pendaftaran</h3>
-        <p>Loket <?= $loket ?> | Tanggal: <?= date('d M Y') ?></p>
+        <p> Tanggal: <?= date('d M Y') ?></p>
     </div>
 
     <div class="container mt-3">
